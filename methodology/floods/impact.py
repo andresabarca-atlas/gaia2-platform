@@ -45,13 +45,30 @@ def sample_flood_exposure(
         Value is the population count if exposed, 0 otherwise.
     """
     points = population_points.copy()
-    coords = [(p.x, p.y) for p in points.geometry]
+
+    # Extract coordinates and population as numpy arrays once — avoids 3.5M Python geometry iterations
+    xs = points.geometry.x.to_numpy()
+    ys = points.geometry.y.to_numpy()
+    pop = points["population"].to_numpy()
+
+    rows = cols = None
 
     for rp in return_periods:
         raster_path = _find_raster(flood_maps_dir, rp)
         with rasterio.open(raster_path) as src:
-            depths = np.array([v[0] for v in src.sample(coords)])
-        points[f"exposed_{rp}"] = np.where(depths > threshold, points["population"], 0.0)
+            if rows is None:
+                # All RP rasters share the same grid — compute pixel indices once and reuse
+                rows, cols = rasterio.transform.rowcol(src.transform, xs, ys)
+                rows = np.clip(np.asarray(rows, dtype=np.intp), 0, src.height - 1)
+                cols = np.clip(np.asarray(cols, dtype=np.intp), 0, src.width - 1)
+            data = src.read(1)  # read full band into memory
+            nodata = src.nodata
+
+        depths = data[rows, cols].astype(float)
+        if nodata is not None:
+            depths[depths == nodata] = 0.0
+
+        points[f"exposed_{rp}"] = np.where(depths > threshold, pop, 0.0)
 
     return points
 
@@ -91,7 +108,7 @@ def calculate_annual_average(
     vals = gdf[cols].fillna(0.0).to_numpy()
 
     # Vectorized trapezoidal integration across return periods (axis=1)
-    aap = poes[-1] * vals[:, -1] - np.trapz(vals, poes, axis=1)
+    aap = poes[-1] * vals[:, -1] - np.trapezoid(vals, poes, axis=1)
 
     result = gdf.copy()
     result[output_col] = aap
@@ -135,18 +152,17 @@ def aggregate_to_boundaries(
     )
     result = result.join(pop_sum).fillna({"pop_tot": 0.0})
 
-    # Exposed population per return period
-    for rp in return_periods:
-        col = f"exposed_{rp}"
-        out_col = f"epop_{rp}"
-        exp_sum = joined.groupby(joined.index_right)[col].sum().rename(out_col)
-        result = result.join(exp_sum).fillna({out_col: 0.0})
+    # Exposed population per return period — single groupby over all columns at once
+    exp_cols = [f"exposed_{rp}" for rp in return_periods]
+    rename_map = {f"exposed_{rp}": f"epop_{rp}" for rp in return_periods}
+    exp_sums = joined.groupby(joined.index_right)[exp_cols].sum().rename(columns=rename_map)
+    result = result.join(exp_sums).fillna({c: 0.0 for c in rename_map.values()})
 
     # Annual average (vectorized)
     poes = 1.0 / np.array(return_periods, dtype=float)
     ep_cols = [f"epop_{rp}" for rp in return_periods]
     vals = result[ep_cols].fillna(0.0).to_numpy()
-    result["epop_ave"] = poes[-1] * vals[:, -1] - np.trapz(vals, poes, axis=1)
+    result["epop_ave"] = poes[-1] * vals[:, -1] - np.trapezoid(vals, poes, axis=1)
 
     return result
 
