@@ -1,4 +1,4 @@
-# GAIA 2.0: Global Assessment of Impacts and Amenazas
+# GAIA 2.0
 
 An open methodology and platform developed by the **Inter-American Development Bank** for estimating the annual average impact of natural hazards on people, weighted by socioeconomic characteristics.
 
