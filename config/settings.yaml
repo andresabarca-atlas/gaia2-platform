@@ -1,0 +1,13 @@
+# GAIA 2.0 — Configuration
+# Edit paths to match your local data layout before running.
+
+parameters:
+  return_periods: [10, 20, 50, 75, 100, 200, 500]
+  flood_threshold: 0.1        # minimum flood depth (m) to consider a point exposed
+
+paths:
+  boundaries:         "data/raw/gadm41_ECU_2.shp"
+  population_raster:  "data/raw/ecu_pop_2025_CN_100m_R2025A_v1.tif"
+  rwi:                "data/raw/ecu_relative_wealth_index.csv"
+  flood_maps_dir:     "data/raw/Flood"   # expects subfolders RP_10, RP_20, etc.
+  output_dir:         "outputs"
