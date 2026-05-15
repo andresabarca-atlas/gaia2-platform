@@ -2,8 +2,8 @@
 # Edit paths to match your local data layout before running.
 
 parameters:
-  return_periods: [10, 20, 50, 75, 100, 200, 500]
   flood_threshold: 0.1        # minimum flood depth (m) to consider a point exposed
+  # return periods are auto-detected from the RP_* subfolders in flood_maps_dir
 
 paths:
   boundaries:         "data/raw/gadm41_ECU_2.shp"

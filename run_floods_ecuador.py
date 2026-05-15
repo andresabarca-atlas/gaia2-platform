@@ -26,6 +26,7 @@ from methodology.common.exposure import assign_rwi, raster_to_points
 from methodology.floods.impact import (
     aggregate_to_boundaries,
     calculate_annual_average,
+    detect_return_periods,
     sample_flood_exposure,
 )
 
@@ -40,8 +41,9 @@ def main(config_path: str = "config/settings.yaml") -> None:
     paths = cfg["paths"]
     params = cfg["parameters"]
 
-    return_periods = params["return_periods"]
     threshold = params["flood_threshold"]
+    return_periods = detect_return_periods(paths["flood_maps_dir"])
+    print(f"      Return periods detected: {return_periods}")
     out_dir = Path(paths["output_dir"])
     out_dir.mkdir(parents=True, exist_ok=True)
 

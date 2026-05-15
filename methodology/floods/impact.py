@@ -171,6 +171,28 @@ def aggregate_to_boundaries(
 # Internal helpers
 # ---------------------------------------------------------------------------
 
+def detect_return_periods(flood_maps_dir: str) -> list:
+    """
+    Scan flood_maps_dir for subfolders named RP_{n} and return the sorted list
+    of integer return periods found.
+
+    Raises ValueError if no valid RP_* folders are found.
+    """
+    import re
+    pattern = re.compile(r"^RP_(\d+)$")
+    rps = []
+    for name in os.listdir(flood_maps_dir):
+        m = pattern.match(name)
+        if m and os.path.isdir(os.path.join(flood_maps_dir, name)):
+            rps.append(int(m.group(1)))
+    if not rps:
+        raise ValueError(
+            f"No RP_* subfolders found in: {flood_maps_dir}\n"
+            f"Expected folders named RP_10, RP_20, etc."
+        )
+    return sorted(rps)
+
+
 def _find_raster(flood_maps_dir: str, rp: int) -> str:
     """Locate the .tif file inside the RP_{rp} subfolder."""
     folder = os.path.join(flood_maps_dir, f"RP_{rp}")
