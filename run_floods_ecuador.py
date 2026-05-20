@@ -58,6 +58,8 @@ def main(config_path: str = "config/settings.yaml") -> None:
     # ------------------------------------------------------------------
     print("[2/5] Converting population raster to points...")
     pop_points = raster_to_points(paths["population_raster"])
+    pop_points["longitude"] = pop_points.geometry.x
+    pop_points["latitude"] = pop_points.geometry.y
     print(f"      {len(pop_points):,} population points loaded")
 
     # ------------------------------------------------------------------
@@ -96,7 +98,8 @@ def main(config_path: str = "config/settings.yaml") -> None:
     points_path = out_dir / "population_points_flood.csv"
 
     boundaries_out.to_file(adm2_path, driver="GPKG")
-    pop_points_out.drop(columns="geometry").to_csv(points_path, index=False)
+    exposed_cols = [c for c in pop_points_out.columns if c.startswith("exposed_")]
+    pop_points_out.drop(columns=["geometry"] + exposed_cols).to_csv(points_path, index=False)
 
     # ------------------------------------------------------------------
     # Summary
