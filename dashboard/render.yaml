@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: gaia-dashboard
+    runtime: python
+    buildCommand: pip install -r dashboard/requirements.txt
+    startCommand: cd dashboard && gunicorn app:server --workers 1 --threads 4 --timeout 120
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: GAIA_DATA_DIR
+        value: /opt/render/project/src/outputs
