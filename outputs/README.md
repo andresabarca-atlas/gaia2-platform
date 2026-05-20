@@ -1,7 +1,7 @@
 # Output Schema
 
 This file defines the output format produced by the GAIA 2.0 analysis scripts.
-Walter uses these outputs to build the public dashboard.
+These outputs are consumed by the Plotly Dash dashboard in [`dashboard/app.py`](../dashboard/app.py).
 
 **Any change to column names, format, or CRS must be updated here and communicated to the team.**
 
@@ -34,14 +34,11 @@ Walter uses these outputs to build the public dashboard.
 | `POVERTY_RA`  | float   | Poverty rate for the ADM2 unit (%). Optional — present only if `data/raw/poverty_data.csv` exists |
 | `epop_poverty`| float   | Average affected population living in poverty (`POVERTY_RA / 100 * epop_ave`). Optional — same condition as above |
 
-### Derived columns recommended for the dashboard
+### Derived columns computed by the dashboard at startup
 
-These can be computed directly in the dashboard from the columns above:
-
-| Derived metric        | Formula                       | Description |
-|-----------------------|-------------------------------|-------------|
-| AAP rate (%)          | `epop_ave / pop_tot * 100`    | Share of population affected per year |
-| Exposure rate at RP   | `epop_{rp} / pop_tot * 100`   | Share exposed at a given return period |
+| Derived column   | Formula                       | Description |
+|------------------|-------------------------------|-------------|
+| `pct_affected`   | `epop_ave / pop_tot * 100`    | Share of population affected per year (%) |
 
 ---
 

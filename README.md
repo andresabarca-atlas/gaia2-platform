@@ -41,9 +41,35 @@ gaia2-platform/
 ├── data/
 │   └── README.md                   # Data sources, licenses, download instructions
 │
-└── outputs/
-    └── README.md                   # Output schema (column definitions, CRS, format)
+├── outputs/
+│   └── README.md                   # Output schema (column definitions, CRS, format)
+│
+└── dashboard/
+    ├── app.py                      # Plotly Dash web application
+    ├── assets/style.css            # Dashboard styles
+    ├── requirements.txt            # Dashboard Python dependencies
+    ├── render.yaml                 # Render.com deployment config
+    ├── Procfile                    # Gunicorn start command
+    └── README.md                   # Run locally + deploy instructions
 ```
+
+---
+
+# 📊 Dashboard
+
+An interactive Plotly Dash web app for visualising flood impact results is included in `dashboard/`.
+
+```bash
+cd dashboard
+pip install -r requirements.txt
+python app.py          # opens at http://127.0.0.1:8050
+```
+
+Features: canton choropleth map, disaggregated population scatter, RWI wealth filter,
+metric-aware viewport counter, and a per-canton detail panel.
+Data files must exist at `outputs/` (tracked via Git LFS — run `git lfs pull` after cloning).
+
+See [`dashboard/README.md`](dashboard/README.md) for deployment instructions (Render.com).
 
 ---
 
