@@ -19,6 +19,7 @@ Outputs (written to paths.output_dir in settings.yaml)
 import argparse
 from pathlib import Path
 
+import pandas as pd
 import geopandas as gpd
 import yaml
 
@@ -90,6 +91,30 @@ def main(config_path: str = "config/settings.yaml") -> None:
 
     # Boundary-level aggregation + AAP
     boundaries_out = aggregate_to_boundaries(pop_points, boundaries, return_periods)
+
+    # ------------------------------------------------------------------
+    # Optional enrichment: poverty rate by ADM2
+    # ------------------------------------------------------------------
+    poverty_path = Path(paths.get("poverty_data", "data/raw/poverty_data.csv"))
+    if poverty_path.exists():
+        print("[+] Poverty data found — joining POVERTY_RA to ADM2 results...")
+        poverty_df = pd.read_csv(poverty_path, usecols=["CC_2", "POVERTY_RA"])
+        # Normalize CC_2: GeoPackage stores it as zero-padded string ("0115"),
+        # CSV stores it as integer (115). Convert both to int for the join.
+        boundaries_out["_cc2_int"] = (
+            pd.to_numeric(boundaries_out["CC_2"], errors="coerce").astype("Int64")
+        )
+        poverty_df["CC_2"] = pd.to_numeric(poverty_df["CC_2"], errors="coerce").astype("Int64")
+        boundaries_out = boundaries_out.merge(
+            poverty_df, left_on="_cc2_int", right_on="CC_2", how="left", suffixes=("", "_pov")
+        ).drop(columns=["_cc2_int", "CC_2_pov"])
+        matched = boundaries_out["POVERTY_RA"].notna().sum()
+        print(f"      {matched}/{len(boundaries_out)} cantons matched with poverty data")
+        # Derived: average affected population living in poverty
+        # POVERTY_RA is a percentage (0–100), so divide by 100 before multiplying
+        boundaries_out["epop_poverty"] = (boundaries_out["POVERTY_RA"] / 100) * boundaries_out["epop_ave"]
+    else:
+        print("[~] No poverty data found — skipping (place poverty_data.csv in data/raw/ to enable)")
 
     # ------------------------------------------------------------------
     # Save outputs

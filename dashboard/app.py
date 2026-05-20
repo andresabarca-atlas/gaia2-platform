@@ -22,6 +22,7 @@ POINTS_PATH = DATA_DIR / "population_points_flood.csv"
 
 gdf = gpd.read_file(GPKG_PATH)
 gdf["pct_affected"] = gdf["epop_ave"] / gdf["pop_tot"] * 100
+HAS_POVERTY = "epop_poverty" in gdf.columns
 with warnings.catch_warnings():
     warnings.simplefilter("ignore")
     gdf["centroid_lat"] = gdf.geometry.centroid.y
@@ -46,6 +47,13 @@ METRIC_LABELS = {
     "epop_ave": "Avg. Affected Pop.",
     "pop_tot": "Total Population",
     "pct_affected": "% Affected",
+}
+
+VIEWPORT_CONFIG = {
+    "pop_tot":      {"col": "pop_tot",      "label": "people\nin viewport"},
+    "epop_ave":     {"col": "epop_ave",     "label": "people affected/year\nin viewport"},
+    "pct_affected": {"col": None,           "label": None},
+    "epop_poverty": {"col": "epop_poverty", "label": "people in poverty\naffected/year\nin viewport"},
 }
 
 # ---------------------------------------------------------------------------
@@ -138,12 +146,19 @@ def _left_panel():
                     dbc.RadioItems(
                         id="metric-selector",
                         options=[
-                            {"label": "Avg. Affected Pop.", "value": "epop_ave"},
-                            {"label": "Total Population", "value": "pop_tot"},
-                            {"label": "% Affected", "value": "pct_affected"},
+                            {"label": "Total population",    "value": "pop_tot"},
+                            {"label": "Affected population", "value": "epop_ave"},
+                            {"label": "% Affected",          "value": "pct_affected"},
+                            {"label": "Affected in poverty", "value": "epop_poverty",
+                             "disabled": not HAS_POVERTY},
                         ],
                         value="epop_ave",
                         inline=False,
+                    ),
+                    dbc.FormText(
+                        "Poverty data not available for this dataset",
+                        color="secondary",
+                        style={"display": "none" if HAS_POVERTY else "block"},
                     ),
                 ],
             ),
@@ -287,6 +302,9 @@ def toggle_panel_sections(view):
     prevent_initial_call=False,
 )
 def update_map(view, metric, colorscale, rwi_range):
+    if metric == "epop_poverty" and not HAS_POVERTY:
+        metric = "epop_ave"
+
     layout = go.Layout(
         uirevision="constant",
         margin=dict(l=0, r=0, t=0, b=0),
@@ -301,12 +319,16 @@ def update_map(view, metric, colorscale, rwi_range):
     if view == "aggregated":
         hover = (
             "<b>%{customdata[0]}</b><br>"
-            "Province: %{customdata[1]}<br>"
+            "%{customdata[1]}<br>"
             "Total pop: %{customdata[2]:,.0f}<br>"
-            "Avg. affected: %{customdata[3]:,.0f}<br>"
-            "% Affected: %{customdata[4]:.2f}%"
-            "<extra></extra>"
+            "Affected: %{customdata[3]:,.0f}<br>"
+            "% Affected: %{customdata[4]:.2f}%<br>"
         )
+        customdata_cols = ["NAME_2", "NAME_1", "pop_tot", "epop_ave", "pct_affected"]
+        if HAS_POVERTY:
+            hover += "In poverty: %{customdata[5]:,.0f}<br>"
+            customdata_cols.append("epop_poverty")
+        hover += "<extra></extra>"
         trace = go.Choroplethmapbox(
             geojson=GEOJSON,
             featureidkey="properties.GID_2",
@@ -317,7 +339,7 @@ def update_map(view, metric, colorscale, rwi_range):
             marker_line_width=0.5,
             marker_line_color="white",
             hovertemplate=hover,
-            customdata=gdf[["NAME_2", "NAME_1", "pop_tot", "epop_ave", "pct_affected"]].values,
+            customdata=gdf[customdata_cols].values,
             colorbar=dict(thickness=14, len=0.5, x=1.0),
         )
     else:
@@ -357,10 +379,18 @@ def update_map(view, metric, colorscale, rwi_range):
     Output("viewport-counter", "children"),
     Input("main-map", "relayoutData"),
     Input("view-toggle", "value"),
+    Input("metric-selector", "value"),
     Input("rwi-slider", "value"),
     prevent_initial_call=True,
 )
-def update_viewport_counter(relayout_data, view, rwi_range):
+def update_viewport_counter(relayout_data, view, selected_metric, rwi_range):
+    # Aggregated: inactive metric (pct_affected) — show muted dash
+    if view == "aggregated":
+        cfg = VIEWPORT_CONFIG.get(selected_metric, VIEWPORT_CONFIG["epop_ave"])
+        if cfg["col"] is None or cfg["col"] not in gdf.columns:
+            return [html.Div("—", style={"fontSize": "1.4rem", "fontWeight": "700",
+                                         "lineHeight": "1.2", "color": "#adb5bd"})]
+
     total = None
 
     if relayout_data and "mapbox._derived" in relayout_data:
@@ -375,7 +405,7 @@ def update_viewport_counter(relayout_data, view, rwi_range):
                 (gdf["centroid_lon"] >= lon_min) & (gdf["centroid_lon"] <= lon_max) &
                 (gdf["centroid_lat"] >= lat_min) & (gdf["centroid_lat"] <= lat_max)
             )
-            total = gdf.loc[mask, "epop_ave"].sum()
+            total = gdf.loc[mask, cfg["col"]].sum()
         else:
             rwi_min, rwi_max = rwi_range
             mask = (
@@ -385,16 +415,12 @@ def update_viewport_counter(relayout_data, view, rwi_range):
             )
             total = df_pts.loc[mask, "epop_ave"].sum()
 
-    if total is None:
-        value_text = "—"
-    else:
-        value_text = f"{total:,.0f}"
+    value_text = f"{total:,.0f}" if total is not None else "—"
+    label_lines = cfg["label"].split("\n") if view == "aggregated" else ["people affected/year", "in viewport"]
 
     return [
         html.Div(value_text, style={"fontSize": "1.4rem", "fontWeight": "700", "lineHeight": "1.2"}),
-        html.Div("people", style={"fontSize": "0.75rem", "color": "#555"}),
-        html.Div("affected/year", style={"fontSize": "0.75rem", "color": "#555"}),
-        html.Div("in viewport", style={"fontSize": "0.75rem", "color": "#555"}),
+        *[html.Div(line, style={"fontSize": "0.75rem", "color": "#555"}) for line in label_lines],
     ]
 
 

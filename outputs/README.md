@@ -31,6 +31,8 @@ Walter uses these outputs to build the public dashboard.
 | `epop_500`   | float   | Exposed population at 500-year return period |
 | `epop_ave`   | float   | **Annual Average affected Population (AAP)** — primary KPI |
 | `geometry`   | polygon | ADM2 boundary polygon |
+| `POVERTY_RA`  | float   | Poverty rate for the ADM2 unit (%). Optional — present only if `data/raw/poverty_data.csv` exists |
+| `epop_poverty`| float   | Average affected population living in poverty (`POVERTY_RA / 100 * epop_ave`). Optional — same condition as above |
 
 ### Derived columns recommended for the dashboard
 
