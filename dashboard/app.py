@@ -23,13 +23,33 @@ POINTS_PATH = DATA_DIR / "population_points_flood.csv"
 gdf = gpd.read_file(GPKG_PATH)
 gdf["pct_affected"] = gdf["epop_ave"] / gdf["pop_tot"] * 100
 HAS_POVERTY = "epop_poverty" in gdf.columns
+
+_GPKG_COLS_NEEDED = [
+    "GID_2", "NAME_1", "NAME_2", "pop_tot", "epop_ave", "pct_affected",
+    "POVERTY_RA", "epop_poverty",
+    "geometry",
+]
+gdf = gdf[[c for c in _GPKG_COLS_NEEDED if c in gdf.columns]]
+
 with warnings.catch_warnings():
     warnings.simplefilter("ignore")
     gdf["centroid_lat"] = gdf.geometry.centroid.y
     gdf["centroid_lon"] = gdf.geometry.centroid.x
-GEOJSON = json.loads(gdf.to_json())
 
-df_pts = pd.read_csv(POINTS_PATH)
+gdf["geometry"] = gdf["geometry"].simplify(tolerance=0.001, preserve_topology=True)
+GEOJSON = json.loads(gdf.to_json())
+gdf = gdf.drop(columns=["geometry"])
+
+df_pts = pd.read_csv(
+    POINTS_PATH,
+    dtype={
+        "longitude":  "float32",
+        "latitude":   "float32",
+        "population": "float32",
+        "rwi":        "float32",
+        "epop_ave":   "float32",
+    },
+)
 
 RWI_MIN = math.floor(df_pts["rwi"].min())
 RWI_MAX = math.ceil(df_pts["rwi"].max())
