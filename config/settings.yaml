@@ -6,7 +6,7 @@ parameters:
   # return periods are auto-detected from the RP* subfolders in flood_maps_dir
 
 paths:
-  boundaries:         "data/raw/gadm41_CHL_2.shp"
+  boundaries:         "data/raw/gadm41_CHL_1.shp"
   population_raster:  "data/raw/chl_pop_2025_CN_100m_R2025A_v1.tif"
   flood_maps_dir:     "data/raw/Flood"   # expects subfolders RP10, RP20, etc. (or RP_10, RP_20)
   output_dir:         "outputs"
