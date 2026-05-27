@@ -15,13 +15,13 @@ from dash import Input, Output, dcc, html
 # ---------------------------------------------------------------------------
 
 DATA_DIR = Path(os.environ.get("GAIA_DATA_DIR", Path(__file__).parent.parent / "outputs"))
-GPKG_PATH = DATA_DIR / "adm2_flood_results.gpkg"
+GPKG_PATH = DATA_DIR / "adm1_flood_results.gpkg"
 
 gdf = gpd.read_file(GPKG_PATH)
 gdf["pct_affected"] = gdf["epop_ave"] / gdf["pop_tot"] * 100
 
 _GPKG_COLS_NEEDED = [
-    "GID_2", "NAME_1", "NAME_2", "pop_tot", "epop_ave", "pct_affected",
+    "GID_1", "NAME_1", "pop_tot", "epop_ave", "pct_affected",
     "geometry",
 ]
 gdf = gdf[[c for c in _GPKG_COLS_NEEDED if c in gdf.columns]]
@@ -195,17 +195,16 @@ def update_map(metric, colorscale):
 
     hover = (
         "<b>%{customdata[0]}</b><br>"
-        "%{customdata[1]}<br>"
-        "Total pop: %{customdata[2]:,.0f}<br>"
-        "Affected: %{customdata[3]:,.0f}<br>"
-        "% Affected: %{customdata[4]:.2f}%<br>"
+        "Total pop: %{customdata[1]:,.0f}<br>"
+        "Affected: %{customdata[2]:,.0f}<br>"
+        "% Affected: %{customdata[3]:.2f}%<br>"
         "<extra></extra>"
     )
-    customdata_cols = ["NAME_2", "NAME_1", "pop_tot", "epop_ave", "pct_affected"]
+    customdata_cols = ["NAME_1", "pop_tot", "epop_ave", "pct_affected"]
     trace = go.Choroplethmapbox(
         geojson=GEOJSON,
-        featureidkey="properties.GID_2",
-        locations=gdf["GID_2"],
+        featureidkey="properties.GID_1",
+        locations=gdf["GID_1"],
         z=gdf[metric],
         colorscale=colorscale,
         marker_opacity=0.7,
@@ -278,7 +277,7 @@ def show_detail(click_data):
     if gid2 is None:
         return False, []
 
-    row = gdf[gdf["GID_2"] == gid2]
+    row = gdf[gdf["GID_1"] == gid2]
     if row.empty:
         return False, []
 
