@@ -15,7 +15,7 @@ from dash import Input, Output, dcc, html
 # ---------------------------------------------------------------------------
 
 DATA_DIR = Path(os.environ.get("GAIA_DATA_DIR", Path(__file__).parent.parent / "outputs"))
-GPKG_PATH = DATA_DIR / "adm1_flood_results.gpkg"
+GPKG_PATH = DATA_DIR / "adm2_flood_results.gpkg"
 
 gdf = gpd.read_file(GPKG_PATH)
 gdf["pct_affected"] = gdf["epop_ave"] / gdf["pop_tot"] * 100
