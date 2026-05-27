@@ -1,3 +1,4 @@
+import gc
 import json
 import os
 import warnings
@@ -17,23 +18,29 @@ from dash import Input, Output, dcc, html
 DATA_DIR = Path(os.environ.get("GAIA_DATA_DIR", Path(__file__).parent.parent / "outputs"))
 GPKG_PATH = DATA_DIR / "adm2_flood_results.gpkg"
 
-gdf = gpd.read_file(GPKG_PATH)
-gdf["pct_affected"] = gdf["epop_ave"] / gdf["pop_tot"] * 100
+# Read full file then immediately drop every column the dashboard doesn't need.
+# This frees the large GADM attribute columns and all epop_* columns before
+# any geometry work happens, keeping peak RSS well under Render's 512 MB limit.
+_gdf_raw = gpd.read_file(GPKG_PATH)
+_keep = [c for c in ["GID_1", "NAME_1", "pop_tot", "epop_ave", "geometry"] if c in _gdf_raw.columns]
+gdf = _gdf_raw[_keep].copy()
+del _gdf_raw
+gc.collect()
 
-_GPKG_COLS_NEEDED = [
-    "GID_1", "NAME_1", "pop_tot", "epop_ave", "pct_affected",
-    "geometry",
-]
-gdf = gdf[[c for c in _GPKG_COLS_NEEDED if c in gdf.columns]]
+gdf["pct_affected"] = gdf["epop_ave"] / gdf["pop_tot"] * 100
 
 with warnings.catch_warnings():
     warnings.simplefilter("ignore")
     gdf["centroid_lat"] = gdf.geometry.centroid.y
     gdf["centroid_lon"] = gdf.geometry.centroid.x
 
-gdf["geometry"] = gdf["geometry"].simplify(tolerance=0.001, preserve_topology=True)
-GEOJSON = json.loads(gdf.to_json())
-gdf = gdf.drop(columns=["geometry"])
+# 0.05° ≈ 5 km — sufficient for a country-level choropleth, much lighter than full resolution
+gdf["geometry"] = gdf["geometry"].simplify(tolerance=0.05, preserve_topology=True)
+
+# GeoJSON only needs the feature ID for choropleth matching; z-values come from gdf
+GEOJSON = json.loads(gdf[["GID_1", "geometry"]].to_json())
+del gdf["geometry"]
+gc.collect()
 
 # ---------------------------------------------------------------------------
 # Constants
