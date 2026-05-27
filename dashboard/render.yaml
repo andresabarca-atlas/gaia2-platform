@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: gaia-dashboard
+    name: gaia-dashboard-chile
     runtime: python
     buildCommand: pip install -r dashboard/requirements.txt
     startCommand: cd dashboard && gunicorn app:server --workers 1 --threads 4 --timeout 120

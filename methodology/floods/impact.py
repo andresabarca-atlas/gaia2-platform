@@ -173,13 +173,13 @@ def aggregate_to_boundaries(
 
 def detect_return_periods(flood_maps_dir: str) -> list:
     """
-    Scan flood_maps_dir for subfolders named RP_{n} and return the sorted list
-    of integer return periods found.
+    Scan flood_maps_dir for subfolders named RP_{n} or RP{n} and return the
+    sorted list of integer return periods found.
 
-    Raises ValueError if no valid RP_* folders are found.
+    Raises ValueError if no valid RP folders are found.
     """
     import re
-    pattern = re.compile(r"^RP_(\d+)$")
+    pattern = re.compile(r"^RP_?(\d+)$")
     rps = []
     for name in os.listdir(flood_maps_dir):
         m = pattern.match(name)
@@ -187,19 +187,21 @@ def detect_return_periods(flood_maps_dir: str) -> list:
             rps.append(int(m.group(1)))
     if not rps:
         raise ValueError(
-            f"No RP_* subfolders found in: {flood_maps_dir}\n"
-            f"Expected folders named RP_10, RP_20, etc."
+            f"No RP folders found in: {flood_maps_dir}\n"
+            f"Expected folders named RP10, RP20, ... or RP_10, RP_20, ..."
         )
     return sorted(rps)
 
 
 def _find_raster(flood_maps_dir: str, rp: int) -> str:
-    """Locate the .tif file inside the RP_{rp} subfolder."""
-    folder = os.path.join(flood_maps_dir, f"RP_{rp}")
-    for fname in os.listdir(folder):
-        if fname.endswith(".tif"):
-            return os.path.join(folder, fname)
+    """Locate the .tif file inside the RP_{rp} or RP{rp} subfolder."""
+    for folder_name in (f"RP_{rp}", f"RP{rp}"):
+        folder = os.path.join(flood_maps_dir, folder_name)
+        if os.path.isdir(folder):
+            for fname in os.listdir(folder):
+                if fname.endswith(".tif"):
+                    return os.path.join(folder, fname)
     raise FileNotFoundError(
-        f"No .tif raster found for RP={rp} in: {folder}\n"
-        f"Expected a subfolder named 'RP_{rp}' containing exactly one .tif file."
+        f"No .tif raster found for RP={rp} in: {flood_maps_dir}\n"
+        f"Expected a subfolder named 'RP_{rp}' or 'RP{rp}' containing a .tif file."
     )
